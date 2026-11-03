@@ -1,0 +1,9 @@
+; Template only. This dialplan does not answer the caller.
+; Stasis owns answer, reject, and bridge. Do not add Answer() before Stasis.
+; Point a dedicated DID at the Stasis application named in ASTERISK_APP_NAME.
+; Personal-number forwarding is a later carrier or PBX route into the same context.
+
+[ody-inbound]
+exten => _X.,1,NoOp(ODY inbound ${CALLERID(num)})
+ same => n,Stasis(ody-phone)
+ same => n,Hangup()

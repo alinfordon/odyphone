@@ -1,0 +1,11 @@
+# Optional local MongoDB. Production does not require Docker.
+services:
+  mongo:
+    image: mongo:8
+    ports:
+      - "27017:27017"
+    volumes:
+      - ody-phone-mongo:/data/db
+
+volumes:
+  ody-phone-mongo:

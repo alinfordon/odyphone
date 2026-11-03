@@ -1,0 +1,8 @@
+; Template only. Bind ARI to loopback. Do not publish port 8088.
+; The API reaches it at http://127.0.0.1:8088/ari when Asterisk is on the same VPS.
+
+[general]
+enabled=yes
+bindaddr=127.0.0.1
+bindport=8088
+tlsenable=no

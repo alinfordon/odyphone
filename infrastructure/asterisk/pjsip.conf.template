@@ -1,0 +1,38 @@
+; Template only. Asterisk is installed separately and is not started by this repository.
+; Replace every CHANGE_ME value. Do not commit a filled-in copy.
+; 5060 must accept the provider. In the host firewall, allow UDP 5060 only from that provider address.
+; Do not publish 8088 or 9019.
+
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0:5060
+
+[ody-trunk]
+type=endpoint
+context=ody-inbound
+disallow=all
+allow=ulaw,alaw
+outbound_auth=ody-trunk-auth
+aors=ody-trunk-aor
+
+[ody-trunk-auth]
+type=auth
+auth_type=userpass
+username=CHANGE_ME
+password=CHANGE_ME
+
+[ody-trunk-aor]
+type=aor
+contact=sip:CHANGE_ME_SIP_HOST
+
+[ody-trunk-registration]
+type=registration
+outbound_auth=ody-trunk-auth
+server_uri=sip:CHANGE_ME_SIP_HOST
+client_uri=sip:CHANGE_ME_DID@CHANGE_ME_SIP_HOST
+
+[ody-trunk-identify]
+type=identify
+endpoint=ody-trunk
+match=CHANGE_ME_SIP_HOST

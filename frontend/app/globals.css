@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --surface-2: #f7f8fc;
+  --text: #121826;
+  --muted: #5d6b82;
+  --line: rgba(18, 24, 38, 0.1);
+  --accent: #3157e8;
+  --accent-2: #6d4dff;
+  --button: #3157e8;
+  --button-text: #ffffff;
+  --good: #0c8f62;
+  --warn: #9a6700;
+  --bad: #c43b3b;
+  --shadow: 0 18px 50px rgba(18, 24, 38, 0.08);
+  --sidebar: 260px;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #070b14;
+  --surface: #101726;
+  --surface-2: #161e30;
+  --text: #e8eef8;
+  --muted: #93a0b8;
+  --line: rgba(232, 238, 248, 0.1);
+  --accent: #8eacff;
+  --accent-2: #b1a4ff;
+  --button: #4c6fff;
+  --button-text: #ffffff;
+  --good: #3dd6a3;
+  --warn: #f0c36a;
+  --bad: #ff8d8d;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(900px 420px at 0% -10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 55%),
+    radial-gradient(700px 380px at 100% 0%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 50%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), "Segoe UI", sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.panel {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+
+.field {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  padding: 0.7rem 0.85rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  color: var(--muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-link:hover {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text);
+}
+
+.nav-link[data-active="true"] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+  box-shadow: inset 2px 0 0 var(--accent);
+}

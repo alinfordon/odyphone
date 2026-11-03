@@ -1,0 +1,22 @@
+{
+  "name": "ody-phone-ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ODY Phone AI — telephone assistant for explicitly authorized numbers",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+    "dev": "concurrently -n api,web -c blue,magenta \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "dev:ephemeral": "npm run dev:ephemeral --prefix backend",
+    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+    "test": "npm test --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "start": "npm run start --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -1,0 +1,12 @@
+; Template only. Keep this file on the Asterisk host, not in the frontend.
+
+[general]
+enabled = yes
+pretty = yes
+allowed_origins = http://127.0.0.1:4000
+
+[ody]
+type = user
+read_only = no
+password = CHANGE_ME
+password_format = plain
