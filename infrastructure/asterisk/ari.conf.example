@@ -1,0 +1,18 @@
+; Sanitized reference for ODY Phone AI. No secrets.
+; Live file on the host: /etc/asterisk/ari.conf (mode 640, root:asterisk).
+; Put the same username and password only in the API .env, which is gitignored:
+;   ASTERISK_ARI_USERNAME=odyari
+;   ASTERISK_ARI_PASSWORD=<the value from the host file, not from Git>
+; The API reads those variables in backend/src/config/env.js.
+; Do not commit a filled-in copy of this file.
+
+[general]
+enabled = yes
+pretty = yes
+allowed_origins = http://127.0.0.1:4000
+
+[odyari]
+type = user
+read_only = no
+password = CHANGE_ME
+password_format = plain

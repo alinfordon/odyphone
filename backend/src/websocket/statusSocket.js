@@ -3,16 +3,18 @@ import { WebSocketServer } from "ws";
 import { logger } from "../config/logger.js";
 import { getSettings } from "../services/settingsService.js";
 import { getSystemStatus } from "../services/statusService.js";
+import { registerWebSocketRoute } from "./upgradeRouter.js";
 
 const tickets = new Map();
 
-export function issueWsTicket(userId) {
+export function issueWsTicket(userId, ttlMs = 30000) {
   const ticket = randomBytes(24).toString("base64url");
-  tickets.set(ticket, { userId: String(userId), expiresAt: Date.now() + 30000 });
-  return { ticket, expiresInSeconds: 30 };
+  const ttl = Number.isFinite(ttlMs) && ttlMs > 0 ? ttlMs : 30000;
+  tickets.set(ticket, { userId: String(userId), expiresAt: Date.now() + ttl });
+  return { ticket, expiresInSeconds: Math.ceil(ttl / 1000) };
 }
 
-function takeTicket(ticket) {
+export function takeTicket(ticket) {
   const entry = tickets.get(ticket);
   tickets.delete(ticket);
   if (!entry || entry.expiresAt < Date.now()) return null;
@@ -20,7 +22,8 @@ function takeTicket(ticket) {
 }
 
 export function attachStatusSocket(server) {
-  const wss = new WebSocketServer({ server, path: "/ws" });
+  const wss = new WebSocketServer({ noServer: true, path: "/ws" });
+  registerWebSocketRoute(server, "/ws", wss);
   wss.on("connection", (socket) => {
     let userId = null;
     const authTimer = setTimeout(() => {

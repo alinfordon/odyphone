@@ -1,0 +1,20 @@
+; Sanitized reference for ODY Phone AI. No provider credentials.
+; Live file on the host: /etc/asterisk/pjsip.conf
+; SIP is bound to loopback until a provider is selected.
+; Do not open UDP 5060 or RTP 10000-20000 yet.
+;
+; After a provider is chosen, add the endpoint from
+; infrastructure/asterisk/pjsip.conf.template, replace every CHANGE_ME,
+; set that endpoint's context to ody-inbound, and set:
+;   ASTERISK_TRUNK_ENDPOINT=PJSIP/{number}@ody-trunk
+; Allow UDP 5060 only from the provider address. Do not commit the filled file.
+
+[global]
+type=global
+user_agent=ODY-Phone-AI
+
+[transport-udp]
+type=transport
+protocol=udp
+bind=127.0.0.1:5060
+allow_reload=yes

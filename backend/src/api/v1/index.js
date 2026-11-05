@@ -21,6 +21,8 @@ import { notificationsRouter } from "./notifications.routes.js";
 import { settingsRouter } from "./settings.routes.js";
 import { telephonyRouter } from "./telephony.routes.js";
 import { analyticsRouter } from "./analytics.routes.js";
+import { voiceLabRouter } from "./voiceLab.routes.js";
+import { odyCoreRouter } from "./odyCore.routes.js";
 
 const router = Router();
 
@@ -45,6 +47,8 @@ router.use("/rules", rulesRouter);
 router.use("/calls", callsRouter);
 router.use("/assistant", assistantRouter);
 router.use("/voice", voiceRouter);
+router.use("/voice-lab", voiceLabRouter);
+router.use("/ody-core", odyCoreRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/settings", settingsRouter);
 router.use("/telephony", telephonyRouter);

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   AudioLines,
+  Mic,
   Bell,
   ChartColumn,
   History,
@@ -14,6 +15,7 @@ import {
   Moon,
   Settings,
   Shield,
+  Fingerprint,
   Sparkles,
   Sun,
   Users,
@@ -32,7 +34,9 @@ const NAV = [
   { href: "/rules", label: "Reguli de apel", icon: Waypoints },
   { href: "/calls", label: "Istoric apeluri", icon: History },
   { href: "/assistant", label: "Personalitate AI", icon: Sparkles },
+  { href: "/ody-core", label: "ODY Core", icon: Fingerprint },
   { href: "/voice", label: "Setări voce", icon: AudioLines },
+  { href: "/voice-lab", label: "Voice Lab", icon: Mic },
   { href: "/notifications", label: "Notificări", icon: Bell },
   { href: "/analytics", label: "Analiză", icon: ChartColumn },
   { href: "/settings", label: "Setări", icon: Settings },

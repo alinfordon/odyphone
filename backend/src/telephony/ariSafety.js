@@ -26,7 +26,23 @@ export function buildTrunkEndpoint(template, phoneNumber) {
   return pattern.replaceAll("{number}", digits);
 }
 
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+
+export function isLoopbackAriUrl(httpBase) {
+  try {
+    const url = new URL(String(httpBase || ""));
+    return (url.protocol === "http:" || url.protocol === "https:") && LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 export function ariEventsUrl(httpBase, appName) {
+  if (!isLoopbackAriUrl(httpBase)) {
+    const error = new Error("ARI este permis doar pe localhost.");
+    error.code = "ARI_NOT_LOOPBACK";
+    throw error;
+  }
   const url = new URL(httpBase);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = `${url.pathname.replace(/\/$/, "")}/events`;

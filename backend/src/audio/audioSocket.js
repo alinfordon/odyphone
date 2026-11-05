@@ -3,6 +3,21 @@ import { getEnv } from "../config/env.js";
 import { logger } from "../config/logger.js";
 import { voiceRuntime } from "./voiceRuntime.js";
 
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+const UUID_TEXT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const AUDIO_SOCKET = {
+  HANGUP: 0x00,
+  UUID: 0x01,
+  DTMF: 0x03,
+  SLIN_8K: 0x10,
+  ERROR: 0xff,
+};
+
+export function isLoopbackHost(host) {
+  return LOOPBACK_HOSTS.has(String(host || "").toLowerCase());
+}
+
 export function encodeFrame(type, payload = Buffer.alloc(0)) {
   const body = Buffer.isBuffer(payload) ? payload : Buffer.from(payload);
   const frame = Buffer.alloc(3 + body.length);
@@ -27,9 +42,25 @@ export function takeFrames(buffer) {
 }
 
 export function bytesToUuid(payload) {
+  if (!Buffer.isBuffer(payload) || payload.length !== 16) return "";
   const hex = payload.toString("hex");
-  if (hex.length !== 32) return "";
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  return UUID_TEXT.test(uuid) ? uuid : "";
+}
+
+export function applyAudioFrame({ type, payload, session, onUuid }) {
+  if (type === AUDIO_SOCKET.HANGUP || type === AUDIO_SOCKET.ERROR) return "hangup";
+  if (type === AUDIO_SOCKET.UUID) {
+    if (session) return "ignore";
+    const uuid = bytesToUuid(payload);
+    if (!uuid) return "reject";
+    return onUuid(uuid) ? "bound" : "reject";
+  }
+  if (!session) return "ignore";
+  if (type === AUDIO_SOCKET.SLIN_8K) return "audio";
+  if (type === AUDIO_SOCKET.DTMF) return "dtmf";
+  if (type >= 0x11 && type <= 0x18) return "other-rate";
+  return "ignore";
 }
 
 export function startAudioSocket({ force = false, port, host } = {}) {
@@ -47,40 +78,63 @@ export function startAudioSocket({ force = false, port, host } = {}) {
   }
   const listenHost = host || envHost;
   const listenPort = port ?? envPort;
+  if (!isLoopbackHost(listenHost)) {
+    voiceRuntime.listening = false;
+    voiceRuntime.detail = "AudioSocket refuză o adresă publică.";
+    logger.warn({ host: listenHost }, "audiosocket refused public bind");
+    return { stop() {} };
+  }
   const server = createServer((socket) => {
     let pending = Buffer.alloc(0);
     let session = null;
+    let settled = false;
+    function finish() {
+      if (settled || !session) return;
+      settled = true;
+      voiceRuntime.active = Math.max(0, voiceRuntime.active - 1);
+      const current = session;
+      session = null;
+      current.onRemoteHangup().catch((error) => {
+        logger.warn({ detail: error.message }, "voice hangup failed");
+      });
+    }
     socket.on("data", (chunk) => {
       pending = Buffer.concat([pending, chunk]);
       const parsed = takeFrames(pending);
       pending = Buffer.from(parsed.rest);
       for (const frame of parsed.frames) {
-        if (frame.type === 0x01) {
-          const uuid = bytesToUuid(frame.payload);
-          session = voiceRuntime.take(uuid);
-          if (!session) {
-            socket.end();
-            return;
-          }
-          voiceRuntime.active += 1;
-          session.bind(socket);
-        } else if (frame.type === 0x10 && session) {
+        const action = applyAudioFrame({
+          type: frame.type,
+          payload: frame.payload,
+          session,
+          onUuid(uuid) {
+            const found = voiceRuntime.take(uuid);
+            if (!found) return false;
+            session = found;
+            voiceRuntime.active += 1;
+            session.bind(socket);
+            return true;
+          },
+        });
+        if (action === "reject") {
+          socket.end();
+          return;
+        }
+        if (action === "hangup") {
+          finish();
+          socket.end();
+          return;
+        }
+        if (action === "audio") {
           session.onAudio(frame.payload).catch((error) => {
             logger.warn({ detail: error.message }, "voice audio frame failed");
           });
-        } else if (frame.type === 0x00 && session) {
-          session.onRemoteHangup().catch((error) => {
-            logger.warn({ detail: error.message }, "voice hangup failed");
-          });
+        } else if (action === "other-rate") {
+          logger.warn({ type: frame.type }, "audiosocket frame is not 8 kHz slin");
         }
       }
     });
-    socket.on("close", () => {
-      if (!session) return;
-      voiceRuntime.active = Math.max(0, voiceRuntime.active - 1);
-      session.onRemoteHangup().catch(() => null);
-      session = null;
-    });
+    socket.on("close", () => finish());
     socket.on("error", () => socket.destroy());
   });
   function stop() {

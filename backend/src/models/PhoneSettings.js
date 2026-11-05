@@ -33,6 +33,18 @@ const phoneSettingsSchema = new mongoose.Schema(
     transcriptRetentionDays: { type: Number, default: 30, min: 1, max: 3650 },
     recordingRetentionDays: { type: Number, default: 7, min: 1, max: 3650 },
     callMetadataRetentionDays: { type: Number, default: 365, min: 1, max: 3650 },
+    odyCore: {
+      personalityNotes: { type: String, default: "" },
+      instructions: { type: String, default: "" },
+      profile: {
+        type: [{
+          id: { type: String, required: true },
+          enabled: { type: Boolean, default: true },
+          value: { type: String, default: "" },
+        }],
+        default: undefined,
+      },
+    },
   },
   { timestamps: true },
 );

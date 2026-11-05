@@ -27,7 +27,7 @@ export class SpeechRecognitionProvider {
     };
   }
 
-  async transcribe({ wav, signal } = {}) {
+  async transcribe({ wav, signal, language = "ro" } = {}) {
     const env = getEnv();
     if (!this.isConfigured()) {
       throw new ApiError(501, "Recunoașterea vorbirii nu este configurată.", "STT_NOT_CONNECTED");
@@ -37,13 +37,13 @@ export class SpeechRecognitionProvider {
     }
     const provider = env.STT_PROVIDER.toLowerCase();
     const response = provider === "openai" || provider === "whisper"
-      ? await this.whisper(env, wav, signal)
+      ? await this.whisper(env, wav, signal, language)
       : await this.fetchImpl(env.STT_API_URL, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${env.STT_API_KEY}`,
             "Content-Type": "audio/wav",
-            "X-Language": "ro",
+            "X-Language": language,
           },
           body: wav,
           signal,
@@ -56,11 +56,11 @@ export class SpeechRecognitionProvider {
     return { text, provider: env.STT_PROVIDER };
   }
 
-  whisper(env, wav, signal) {
+  whisper(env, wav, signal, language = "ro") {
     const form = new FormData();
     form.set("file", new Blob([new Uint8Array(wav)], { type: "audio/wav" }), "caller.wav");
     form.set("model", env.STT_MODEL || "whisper-1");
-    form.set("language", "ro");
+    form.set("language", language);
     return this.fetchImpl(env.STT_API_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${env.STT_API_KEY}` },
@@ -96,7 +96,7 @@ export class TextToSpeechProvider {
     };
   }
 
-  async synthesize(text, { signal } = {}) {
+  async synthesize(text, { signal, language = "ro", voiceId } = {}) {
     const env = getEnv();
     if (!this.isConfigured()) {
       throw new ApiError(501, "Sinteza vocală nu este configurată.", "TTS_NOT_CONNECTED");
@@ -105,8 +105,8 @@ export class TextToSpeechProvider {
     if (!spoken) throw new ApiError(400, "Nu există text de rostit.", "TTS_EMPTY");
     const provider = env.TTS_PROVIDER.toLowerCase();
     const response = provider === "elevenlabs"
-      ? await this.eleven(env, spoken, signal)
-      : await this.speech(env, spoken, signal, provider);
+      ? await this.eleven(env, spoken, signal, voiceId)
+      : await this.speech(env, spoken, signal, provider, language, voiceId);
     if (!response.ok) {
       throw new ApiError(502, "Sinteza vocală a eșuat. Nu a fost redat niciun sunet inventat.", "TTS_PROVIDER_ERROR");
     }
@@ -119,8 +119,9 @@ export class TextToSpeechProvider {
     }
   }
 
-  speech(env, text, signal, provider) {
+  speech(env, text, signal, provider, language = "ro", voiceId) {
     const openai = provider === "openai";
+    const voice = voiceId || env.TTS_VOICE_ID || (openai ? "alloy" : "");
     return this.fetchImpl(env.TTS_API_URL, {
       method: "POST",
       headers: {
@@ -132,21 +133,21 @@ export class TextToSpeechProvider {
         ? {
             model: env.TTS_MODEL || "tts-1",
             input: text,
-            voice: env.TTS_VOICE_ID || "alloy",
+            voice,
             response_format: "wav",
           }
         : {
             text,
-            language: "ro",
-            voiceId: env.TTS_VOICE_ID || "",
+            language,
+            voiceId: voice,
             format: "wav",
           }),
       signal,
     });
   }
 
-  eleven(env, text, signal) {
-    const voice = env.TTS_VOICE_ID || "";
+  eleven(env, text, signal, voiceId) {
+    const voice = voiceId || env.TTS_VOICE_ID || "";
     const base = env.TTS_API_URL.replace(/\/$/, "");
     const url = voice && !base.endsWith(`/${voice}`) ? `${base}/${encodeURIComponent(voice)}` : base;
     const target = `${url}${url.includes("?") ? "&" : "?"}output_format=pcm_8000`;

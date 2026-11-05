@@ -111,6 +111,7 @@ Secrets belong in `.env`, which is not committed. `.env.example` lists every var
 - [API](docs/API.md)
 - [Asterisk setup](docs/ASTERISK_SETUP.md)
 - [AI providers](docs/AI_PROVIDERS.md)
+- [Voice Lab](docs/VOICE_LAB.md)
 - [Android integration](docs/ANDROID_INTEGRATION.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [SIP test](docs/SIP_TEST.md)

@@ -1,0 +1,10 @@
+; Sanitized reference for ODY Phone AI. No secrets.
+; Live file on the host: /etc/asterisk/http.conf
+; ARI stays on loopback. Do not publish TCP 8088.
+; Backend variable: ASTERISK_ARI_URL=http://127.0.0.1:8088/ari
+
+[general]
+enabled=yes
+bindaddr=127.0.0.1
+bindport=8088
+tlsenable=no

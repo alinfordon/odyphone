@@ -5,8 +5,10 @@ import { logger } from "../config/logger.js";
 import { voiceCanAnswer } from "../audio/voiceRuntime.js";
 import { createNotification } from "../services/notificationService.js";
 import { getSettings } from "../services/settingsService.js";
+import { createAriEventConnection } from "./ariConnection.js";
 import { createAriClient } from "./ariClient.js";
 import { ariEventsUrl } from "./ariSafety.js";
+import { closeLiveSession, markLiveStasis, openLiveSession } from "./liveSessions.js";
 import { createChannelBook, handleChannelDestroyed, handleInboundStasis, handleOutboundStasis } from "./callDispatcher.js";
 
 export const ariRuntime = {
@@ -14,6 +16,15 @@ export const ariRuntime = {
   connected: false,
   detail: "ARI nu este configurat.",
 };
+
+export function classifyAriEvent(event) {
+  if (event?.type === "StasisStart" && event.channel?.id) {
+    if (event.args?.[0] === "dialed" && event.args?.[1]) return "outbound";
+    return "inbound";
+  }
+  if ((event?.type === "ChannelDestroyed" || event?.type === "StasisEnd") && event.channel?.id) return "end";
+  return "ignore";
+}
 
 export function startAriEvents() {
   if (process.env.NODE_ENV === "test") return { stop() {} };
@@ -39,9 +50,6 @@ export function startAriEvents() {
     appName: env.ASTERISK_APP_NAME,
   });
   let stopped = false;
-  let socket;
-  let timer;
-  let delay = 1000;
   let wasConnected = false;
   let disconnectNoted = false;
 
@@ -61,11 +69,20 @@ export function startAriEvents() {
     });
   }
 
-  async function onEvent(event) {
-    if (event?.type === "StasisStart" && event.channel?.id) {
-      if (event.args?.[0] === "dialed" && event.args?.[1]) {
-        await handleOutboundStasis({ inboundId: event.args[1], outboundId: event.channel.id, ari, sessions });
-        return;
+  async function handleEvent(event) {
+    const kind = classifyAriEvent(event);
+    if (kind === "outbound") {
+      markLiveStasis(event.args[1], "dialed");
+      await handleOutboundStasis({ inboundId: event.args[1], outboundId: event.channel.id, ari, sessions });
+      return;
+    }
+    if (kind === "inbound") {
+      const opened = openLiveSession({
+        channelId: event.channel.id,
+        callerId: event.channel?.caller?.number || "",
+      });
+      if (opened.duplicate) {
+        logger.info({ channelId: event.channel.id }, "duplicate stasis start");
       }
       const owner = await User.findOne().sort({ createdAt: 1 });
       if (!owner) {
@@ -93,63 +110,61 @@ export function startAriEvents() {
       }
       return;
     }
-    if ((event?.type === "ChannelDestroyed" || event?.type === "StasisEnd") && event.channel?.id && sessions.has(event.channel.id)) {
-      await handleChannelDestroyed({ channelId: event.channel.id, ari, sessions });
+    if (kind === "end") {
+      if (sessions.has(event.channel.id)) {
+        await handleChannelDestroyed({ channelId: event.channel.id, ari, sessions });
+      }
+      closeLiveSession(event.channel.id);
     }
   }
 
-  function connect() {
-    if (stopped) return;
-    let url;
-    try {
-      url = ariEventsUrl(getEnv().ASTERISK_ARI_URL, getEnv().ASTERISK_APP_NAME);
-    } catch {
-      ariRuntime.detail = "Adresa ARI nu este validă.";
-      return;
-    }
-    socket = new WebSocket(url, { headers: { Authorization: ari.authHeader } });
-    socket.on("open", () => {
-      delay = 1000;
+  const connection = createAriEventConnection({
+    WebSocketImpl: WebSocket,
+    getTarget() {
+      if (stopped) {
+        const error = new Error("stopped");
+        throw error;
+      }
+      return {
+        url: ariEventsUrl(getEnv().ASTERISK_ARI_URL, getEnv().ASTERISK_APP_NAME),
+        authorization: ari.authHeader,
+      };
+    },
+    onEvent(event) {
+      return handleEvent(event).catch((error) => {
+        logger.warn({ detail: error.message }, "asterisk event failed");
+      });
+    },
+    onOpen() {
       wasConnected = true;
       disconnectNoted = false;
       ariRuntime.connected = true;
       ariRuntime.detail = voiceCanAnswer(getEnv())
         ? "Evenimentele ARI sunt conectate. AI poate prelua canalul prin AudioSocket."
         : "Evenimentele ARI sunt conectate. AI nu preia canalul până când vocea și AudioSocket sunt gata.";
-      logger.info({ telephony: "ari-events" }, "Asterisk event stream connected");
-    });
-    socket.on("message", (raw) => {
-      let event;
-      try {
-        event = JSON.parse(String(raw));
-      } catch {
-        return;
-      }
-      onEvent(event).catch((error) => {
-        logger.warn({ detail: error.message }, "asterisk event failed");
-      });
-    });
-    socket.on("close", () => {
+      logger.info({ telephony: "ari-events", app: getEnv().ASTERISK_APP_NAME }, "Asterisk event stream connected");
+    },
+    onClose() {
       ariRuntime.connected = false;
       ariRuntime.detail = "Fluxul de evenimente ARI s-a întrerupt. Se reîncearcă conectarea.";
-      if (!stopped) noteDisconnect();
       if (!stopped) {
-        timer = setTimeout(connect, delay);
-        delay = Math.min(delay * 2, 30000);
+        noteDisconnect();
+        logger.warn({ telephony: "ari-events" }, "Asterisk event stream disconnected");
       }
-    });
-    socket.on("error", () => {
+    },
+    onError(error) {
       ariRuntime.connected = false;
-      socket.close();
-    });
-  }
+      if (error?.code === "ARI_NOT_LOOPBACK") {
+        ariRuntime.detail = "Adresa ARI nu este pe localhost.";
+      }
+      logger.warn({ detail: error?.message || "ari socket error", code: error?.code }, "asterisk connection error");
+    },
+  });
 
-  connect();
   return {
     stop() {
       stopped = true;
-      clearTimeout(timer);
-      socket?.close();
+      connection.stop();
       ariRuntime.connected = false;
     },
   };

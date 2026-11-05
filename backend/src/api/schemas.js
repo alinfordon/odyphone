@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CALL_STATUSES, CONTACT_CATEGORIES, MATCH_TYPES, RULE_ACTIONS } from "../../../shared/constants/index.js";
+import { ODY_PROFILE } from "../odyCore/profile.js";
 
 const email = z
   .string()
@@ -251,3 +252,66 @@ export const deviceSchema = envelope({
 });
 
 export const idSchema = envelope({ params: idParams });
+
+const voiceEngine = z.enum(["gemini-live", "modular", "hybrid"]);
+const voiceLlm = z.enum(["gemini", "ollama"]);
+const voiceProviderChoice = z.enum(["configured", "local"]);
+const voiceLanguage = z.enum(["ro", "en"]);
+export const voiceLabSessionSchema = envelope({
+  body: z.object({
+    engine: voiceEngine,
+    llm: voiceLlm.default("gemini"),
+    ollamaModel: z.string().trim().max(120).regex(/^$|^[\w.:-]+$/).optional().default(""),
+    stt: voiceProviderChoice.default("configured"),
+    tts: voiceProviderChoice.default("configured"),
+    voice: z.string().trim().max(80).optional().default(""),
+    language: voiceLanguage.default("ro"),
+    hybridFallback: z.boolean().optional().default(true),
+  }),
+});
+
+export const voiceLabTextSchema = envelope({
+  body: z.object({
+    llm: voiceLlm,
+    model: z.string().trim().max(120).regex(/^$|^[\w.:-]+$/).optional().default(""),
+    prompt: z.string().trim().min(1).max(4000),
+    system: z.string().trim().max(2000).optional().default(""),
+  }),
+});
+
+export const voiceLabIdSchema = envelope({
+  params: z.object({ id: z.string().uuid() }),
+});
+
+const odyFact = z.object({
+  id: z.string().trim().min(1).max(40).regex(/^[\w-]+$/),
+  enabled: z.boolean(),
+  value: z.string().trim().min(1).max(400),
+});
+
+export const odyCoreIdentitySchema = envelope({
+  body: z.object({
+    personalityNotes: z.string().trim().max(1000),
+    instructions: z.string().trim().max(2000),
+  }),
+});
+
+const odyProfileIds = new Set(ODY_PROFILE.map((item) => item.id));
+
+export const odyCoreProfileSchema = envelope({
+  body: z.object({
+    items: z.array(odyFact).min(1).max(20),
+  }).superRefine((value, ctx) => {
+    const ids = value.items.map((item) => item.id);
+    const unique = new Set(ids);
+    if (unique.size !== ids.length || ids.length !== odyProfileIds.size || ids.some((id) => !odyProfileIds.has(id))) {
+      ctx.addIssue({ code: "custom", path: ["items"], message: "Profilul conține o informație necunoscută." });
+    }
+  }),
+});
+
+export const odyCoreTestSchema = envelope({
+  body: z.object({
+    message: z.string().trim().min(1).max(1000),
+  }),
+});

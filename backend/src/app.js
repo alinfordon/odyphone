@@ -12,6 +12,9 @@ import { voiceRuntime } from "./audio/voiceRuntime.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { createApiLimiter } from "./middleware/rateLimit.js";
 import { telephonyHealthState } from "./services/productionMonitor.js";
+import { probeAsterisk } from "./services/statusService.js";
+import { ariRuntime } from "./telephony/ariEvents.js";
+import { activeSessionCount } from "./telephony/liveSessions.js";
 
 export function createApp() {
   const env = getEnv();
@@ -43,13 +46,37 @@ export function createApp() {
   }));
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
-  app.get("/api/v1/health", (_req, res) => {
+  app.get("/api/v1/health", async (_req, res) => {
+    let asterisk = { ok: false, state: "unreachable" };
+    try {
+      asterisk = await probeAsterisk();
+    } catch {
+      asterisk = { ok: false, state: "unreachable" };
+    }
     res.json({
       data: {
         ok: true,
         service: "ody-phone-ai",
+        api: "up",
         telephony: telephonyHealthState(),
         voice: voiceRuntime.listening ? "listening" : "down",
+        ari: {
+          configured: ariRuntime.configured,
+          connected: ariRuntime.connected,
+        },
+        audioSocket: {
+          listening: voiceRuntime.listening,
+          host: voiceRuntime.listening ? voiceRuntime.host : null,
+          port: voiceRuntime.listening ? voiceRuntime.port : null,
+        },
+        asterisk: {
+          reachable: asterisk.state === "reachable",
+          state: asterisk.state,
+        },
+        sessions: {
+          active: activeSessionCount(),
+          audioSockets: voiceRuntime.active,
+        },
         developmentMode: env.developmentMode,
       },
     });

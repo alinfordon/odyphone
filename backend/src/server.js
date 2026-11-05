@@ -4,6 +4,7 @@ import { connectDb } from "./config/db.js";
 import { getEnv } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { attachStatusSocket } from "./websocket/statusSocket.js";
+import { attachVoiceLabSocket } from "./websocket/voiceLabSocket.js";
 import { startAriEvents, ariRuntime } from "./telephony/ariEvents.js";
 import { startAudioSocket } from "./audio/audioSocket.js";
 import { assertProductionConfig } from "./services/productionReadiness.js";
@@ -33,6 +34,7 @@ try {
 
 const server = createServer(app);
 attachStatusSocket(server);
+attachVoiceLabSocket(server);
 const ariEvents = startAriEvents();
 const audioSocket = startAudioSocket();
 const monitor = startProductionMonitor();
@@ -52,6 +54,8 @@ function shutdown() {
   audioSocket.stop();
   ariEvents.stop();
   server.close(() => process.exit(0));
+  server.closeAllConnections?.();
+  setTimeout(() => process.exit(0), 2000).unref();
 }
 
 process.on("SIGINT", shutdown);

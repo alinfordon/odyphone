@@ -1,4 +1,5 @@
 import { getEnv } from "../config/env.js";
+import { isLoopbackAriUrl } from "../telephony/ariSafety.js";
 import { describeVoice, voiceCanAnswer } from "../audio/voiceRuntime.js";
 import { ariRuntime } from "../telephony/ariEvents.js";
 import { recordingWarning } from "./settingsService.js";
@@ -27,6 +28,14 @@ export async function probeAsterisk() {
       live: false,
       control: "off",
       message: "ARI Asterisk nu este configurat.",
+    };
+  } else if (!isLoopbackAriUrl(env.ASTERISK_ARI_URL)) {
+    value = {
+      ok: false,
+      state: "rejected",
+      live: false,
+      control: "off",
+      message: "ARI este permis doar pe localhost.",
     };
   } else {
     try {

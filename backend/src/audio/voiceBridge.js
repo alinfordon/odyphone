@@ -13,6 +13,7 @@ import { createNotification } from "../services/notificationService.js";
 import { getSettings } from "../services/settingsService.js";
 import { wrapPcmAsWav } from "./pcm.js";
 import { voiceRuntime } from "./voiceRuntime.js";
+import { closeLiveSession, markLiveAudio } from "../telephony/liveSessions.js";
 import { createVoiceSession } from "./voiceSession.js";
 
 const FAILURE = "Nu reușesc să continui conversația. Puteți repeta, vă rog?";
@@ -118,6 +119,7 @@ export async function connectAiVoice({ ari, channelId, userId, call, sessions, d
         callId: updated._id,
       });
     }
+    markLiveAudio(channelId, "closed");
     record.state = "closed";
     record.live = false;
     await record.save().catch(() => null);
@@ -126,6 +128,8 @@ export async function connectAiVoice({ ari, channelId, userId, call, sessions, d
     if (bridge.id) await ari.destroyBridge(bridge.id).catch(() => null);
     sessions?.delete(channelId);
     sessions?.delete(media.channelId);
+    closeLiveSession(channelId);
+    closeLiveSession(media.channelId);
   }
   const session = createVoiceSession({
     greetingPcm: greeting.pcm,
@@ -168,6 +172,11 @@ export async function connectAiVoice({ ari, channelId, userId, call, sessions, d
   };
   sessions?.set(channelId, book);
   sessions?.set(media.channelId, book);
+  const bind = session.bind.bind(session);
+  session.bind = (socket) => {
+    markLiveAudio(channelId, "connected");
+    return bind(socket);
+  };
   runtime.hold?.(uuid, session);
   watchdog = setTimeout(() => {
     if (!audioConnected) session.end("no-audio");

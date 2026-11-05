@@ -1,0 +1,26 @@
+; Sanitized reference for ODY Phone AI.
+; Live file on the host: /etc/asterisk/extensions.conf
+; This dialplan does not answer. Stasis owns answer, reject, and bridge.
+; Do not add Answer() before Stasis. Do not route to a real external number.
+;
+; The API subscribes to the Stasis application named by ASTERISK_APP_NAME
+; (ody-phone). A future SIP endpoint must set context=ody-inbound.
+; ody-incoming is the same path under the name used by the install notes.
+; Neither context is attached to a trunk in the initial installation.
+
+[general]
+static=yes
+writeprotect=yes
+clearglobalvars=no
+
+[globals]
+
+[ody-inbound]
+exten => _X.,1,NoOp(ODY inbound ${CALLERID(num)})
+ same => n,Stasis(ody-phone)
+ same => n,Hangup()
+
+[ody-incoming]
+exten => _X.,1,NoOp(ODY incoming ${CALLERID(num)})
+ same => n,Stasis(ody-phone)
+ same => n,Hangup()
