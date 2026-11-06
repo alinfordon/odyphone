@@ -1,0 +1,86 @@
+
+name: SGDEV - ODY Phone Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA complet pentru build"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout approved commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+
+      - name: Verify commit
+        env:
+          EXPECTED_SHA: ${{ inputs.commit_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+     
+      - name: Run backend tests
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://127.0.0.1:27017/odyphone_ci
+          JWT_SECRET: odyphone-ci-only-jwt-secret-123456
+          JWT_REFRESH_SECRET: odyphone-ci-only-refresh-secret-123456
+          AUDIOSOCKET_HOST: 127.0.0.1
+          LOG_LEVEL: silent
+          PHONE_AI_ENABLED: "false"
+        run: npm test --prefix backend
+
+
+      - name: Run lint
+        run: |
+          npm run lint --prefix backend
+          npm run lint --prefix frontend
+
+      - name: Build frontend
+        run: npm run build --prefix frontend
+
+      - name: Prepare release artifact
+        run: |
+          mkdir -p release
+          cp -a backend frontend release/
+          find release -type f -name '.env' -delete
+          find release -type f -name '.env.local' -delete
+          find release -type f -name '.env.production' -delete
+          find release -type d -name '.git' -prune -exec rm -rf {} +
+          tar -czf odyphone-release.tar.gz -C release .
+          sha256sum odyphone-release.tar.gz > odyphone-release.sha256
+          git rev-parse HEAD > commit.txt
+
+      - name: Upload release
+        uses: actions/upload-artifact@v4
+        with:
+          name: odyphone-sgdev-release
+          path: |
+            odyphone-release.tar.gz
+            odyphone-release.sha256
+            commit.txt
+          retention-days: 7
+          if-no-files-found: error
