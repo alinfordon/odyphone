@@ -13,7 +13,7 @@ export function assertChannelId(value) {
 export function buildTrunkEndpoint(template, phoneNumber) {
   const pattern = String(template || "").trim();
   const digits = String(phoneNumber || "").replace(/\D/g, "");
-  if (!pattern.includes("{number}") || !/^[\w@/:.{}\-]+$/.test(pattern)) {
+  if (!pattern.includes("{number}") || !/^[\w@/:.{}-]+$/.test(pattern)) {
     const error = new Error("Șablonul de trunchi nu este utilizabil.");
     error.code = "TRUNK_NOT_CONFIGURED";
     throw error;

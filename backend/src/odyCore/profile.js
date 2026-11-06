@@ -49,6 +49,7 @@ export function assertNoSecret(value) {
   if (SECRET.test(text)) {
     throw new ApiError(400, "Textul nu poate conține secrete.", "ODY_CORE_SECRET");
   }
+  // eslint-disable-next-line no-control-regex -- Remove unsafe control characters
   return text.replace(/[\u0000-\u001f]/g, " ").trim();
 }
 
@@ -101,6 +102,7 @@ export function profileItemsForSave(items) {
 function stripText(value, max) {
   return String(value || "")
     .replace(SECRET_STRIP, "")
+    // eslint-disable-next-line no-control-regex -- Remove unsafe control characters
     .replace(/[\u0000-\u001f]/g, " ")
     .trim()
     .slice(0, max);
