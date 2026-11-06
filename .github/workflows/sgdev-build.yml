@@ -41,8 +41,18 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
 
+     
       - name: Run backend tests
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://127.0.0.1:27017/odyphone_ci
+          JWT_SECRET: odyphone-ci-only-jwt-secret-123456
+          JWT_REFRESH_SECRET: odyphone-ci-only-refresh-secret-123456
+          AUDIOSOCKET_HOST: 127.0.0.1
+          LOG_LEVEL: silent
+          PHONE_AI_ENABLED: "false"
         run: npm test --prefix backend
+
 
       - name: Run lint
         run: |
