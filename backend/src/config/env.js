@@ -32,7 +32,7 @@ const optionalText = z
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
-  HOST: z.enum(["127.0.0.1", "::1"]).optional(),
+  HOST: z.enum(["127.0.0.1", "::1", "0.0.0.0"]).optional(),
   FRONTEND_URL: z.string().trim().min(1).default("http://localhost:3000"),
   BACKEND_URL: z.string().trim().min(1).default("http://localhost:4000"),
   MONGODB_URI: z.string().trim().min(1),
