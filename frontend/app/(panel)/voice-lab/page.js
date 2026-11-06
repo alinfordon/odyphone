@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Button, Field, PageHeader, Select, TextArea } from "../../../components/ui";
 import { api } from "../../../lib/api";
 import { voiceLabCloseMessage, voiceLabWebSocketUrl } from "../../../lib/voiceLabSocket";
@@ -35,6 +35,24 @@ export default function VoiceLabPage() {
   const audioRef = useRef(null);
   const socketRef = useRef(null);
 
+  const stopPlayback = useCallback(() => {
+    const holder = audioRef.current;
+    holder?.sources?.splice(0).forEach((source) => {
+      try { source.stop(); } catch { /* already finished */ }
+    });
+    if (holder) holder.nextAt = 0;
+  }, []);
+
+  const stopAudio = useCallback(() => {
+    stopPlayback();
+    const holder = audioRef.current;
+    holder?.processor?.disconnect();
+    holder?.source?.disconnect();
+    holder?.stream?.getTracks().forEach((track) => track.stop());
+    holder?.context?.close().catch(() => null);
+    audioRef.current = null;
+  }, [stopPlayback]);
+
   useEffect(() => {
     let stopped = false;
     api("/api/v1/voice-lab/status").then((result) => {
@@ -57,7 +75,7 @@ export default function VoiceLabPage() {
       stopAudio();
       socketRef.current?.close(1000, "page closed");
     };
-  }, []);
+  }, [stopAudio]);
 
   const voices = form.engine === "modular" ? status?.voices.modular || [] : status?.voices.live || [];
 
@@ -185,24 +203,6 @@ export default function VoiceLabPage() {
     source.start(startAt);
     holder.nextAt = startAt + buffer.duration;
     holder.sources.push(source);
-  }
-
-  function stopPlayback() {
-    const holder = audioRef.current;
-    holder?.sources?.splice(0).forEach((source) => {
-      try { source.stop(); } catch { /* already finished */ }
-    });
-    if (holder) holder.nextAt = 0;
-  }
-
-  function stopAudio() {
-    stopPlayback();
-    const holder = audioRef.current;
-    holder?.processor?.disconnect();
-    holder?.source?.disconnect();
-    holder?.stream?.getTracks().forEach((track) => track.stop());
-    holder?.context?.close().catch(() => null);
-    audioRef.current = null;
   }
 
   function stopTest() {
