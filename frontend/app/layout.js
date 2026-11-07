@@ -1,9 +1,19 @@
-import { Outfit, Source_Sans_3 } from "next/font/google";
+import localFont from "next/font/local";
 import { Providers } from "../components/Providers";
 import "./globals.css";
 
-const display = Outfit({ subsets: ["latin", "latin-ext"], variable: "--font-display" });
-const sans = Source_Sans_3({ subsets: ["latin", "latin-ext"], variable: "--font-sans" });
+const display = localFont({
+  src: "./fonts/Outfit-Variable.ttf",
+  weight: "100 900",
+  display: "swap",
+  variable: "--font-display",
+});
+const sans = localFont({
+  src: "./fonts/SourceSans3-Variable.ttf",
+  weight: "200 900",
+  display: "swap",
+  variable: "--font-sans",
+});
 
 export const metadata = {
   title: "ODY Phone AI",
