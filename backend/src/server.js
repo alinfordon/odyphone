@@ -38,7 +38,7 @@ attachVoiceLabSocket(server);
 const ariEvents = startAriEvents();
 const audioSocket = startAudioSocket();
 const monitor = startProductionMonitor();
-server.listen(env.PORT, () => {
+server.listen(env.PORT, env.HOST, () => {
   logger.info(
     {
       port: env.PORT,
